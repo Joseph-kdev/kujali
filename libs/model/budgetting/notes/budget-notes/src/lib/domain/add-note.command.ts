@@ -1,5 +1,5 @@
 export interface BudgetNote {
-  id: string;
+  orgId: string;
   budgetId: string
   content: string;
   authorId: string;
@@ -7,14 +7,14 @@ export interface BudgetNote {
 }
 
 export class AddNoteToBudgetCommand {
-  readonly id: string;
+  readonly orgId: string;
   readonly budgetId: string;
   readonly content: string;
   readonly authorId: string;
   readonly createdAt: Date | string;
 
   constructor(data: BudgetNote) {
-    this.id = data.id;
+    this.orgId = data.id;
     this.budgetId = data.budgetId;
     this.content = data.content.trim();
     this.authorId = data.authorId;

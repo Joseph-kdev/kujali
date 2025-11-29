@@ -5,9 +5,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSort } from '@angular/material/sort';
 import { Router } from '@angular/router';
 
-import { SubSink } from 'subsink';
-import { Observable, tap } from 'rxjs';
-
 import { Budget, BudgetRecord } from '@app/model/finance/planning/budgets';
 
 import { ShareBudgetModalComponent } from '../share-budget-modal/share-budget-modal.component';
@@ -18,44 +15,34 @@ import { ChildBudgetsModalComponent } from '../../modals/child-budgets-modal/chi
   selector: 'app-budget-table',
   templateUrl: './budget-table.component.html',
   styleUrls: ['./budget-table.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 
 export class BudgetTableComponent {
+  budgets$ = input.required<{overview: BudgetRecord[], budgets: any[]}>();
+  canPromote = input(false);
 
-  private _sbS = new SubSink();
-
-  @Input() budgets$: Observable<{overview: BudgetRecord[], budgets: any[]}>;
-  @Input() canPromote = false;
+  private paginator = viewChild.required<MatPaginator>('paginator')
+  private sort = viewChild.required<MatSort>('sort')
 
   @Output() doPromote: EventEmitter<void> = new EventEmitter();
 
   dataSource = new MatTableDataSource();
-
   displayedColumns: string[] = ['name', 'status', 'startYear', 'duration', 'actions'];
 
-  @ViewChild(MatPaginator) paginator: MatPaginator;
-  @ViewChild('sort', { static: true }) sort: MatSort;
+  private _router$$ = inject(Router)
+  private _dialog = inject(MatDialog)
 
-  overviewBudgets: BudgetRecord[] = [];
+  overviewBudgets = computed(() => this.budgets$().overview)
+  tableData = computed(() => this.budgets$().budgets)
 
-  constructor(private _router$$: Router,
-              private _dialog: MatDialog,
-  ) { }
-
-  ngOnInit(): void {
-    this._sbS.sink = this.budgets$.pipe(tap((o) => {
-      this.overviewBudgets = o.overview;
-      this.dataSource.data = o.budgets;
-    })).subscribe();
-  }
-
-  /** 
+  /**
  * Checks whether the user has access to a certain feature.
- * 
- * @TODO @IanOdhiambo9 - Please put proper access control architecture in place. 
+ *
+ * @TODO @IanOdhiambo9 - Please put proper access control architecture in place.
  */
-  access(requested:any) 
-  {  
+  access(requested:any)
+  {
     switch (requested) {
       case 'view':
       case 'clone':
@@ -69,6 +56,10 @@ export class BudgetTableComponent {
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+
+    effect(() => {
+      this.dataSource.data = this.tableData()
+    })
   }
 
   filterAccountRecords(event: Event) {
@@ -86,7 +77,7 @@ export class BudgetTableComponent {
   }
 
   /** Open share screen to configure budget access. */
-  openShareBudgetDialog(parent: Budget | false): void 
+  openShareBudgetDialog(parent: Budget | false): void
   {
     this._dialog.open(ShareBudgetModalComponent, {
       panelClass: 'no-pad-dialog',
@@ -104,8 +95,8 @@ export class BudgetTableComponent {
     });
   }
 
-  openChildBudgetDialog(parent : Budget): void 
-  { 
+  openChildBudgetDialog(parent : Budget): void
+  {
     let children: any = this.overviewBudgets.find((budget) => budget.budget.id === parent.id)!?.children;
     children = children?.map((child) => child.budget)
     this._dialog.open(ChildBudgetsModalComponent, {
